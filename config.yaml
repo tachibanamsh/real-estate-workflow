@@ -1,0 +1,58 @@
+# 物件設定ファイル
+property:
+  name_ja: "ルミエック 北千住"       # 変更してください
+  name_en: "Lumiec Kitasenju"        # スライド右上・表紙に使用
+  slug: "Lumiec_Kitasenju"           # 出力ファイル名に使用（英数字+ハイフン）
+
+# API設定
+api:
+  # Claude: gmi cloud 経由（テキスト抽出 Step1で使用）
+  claude:
+    base_url: "https://api.gmi-serving.com/v1/messages"
+    model: "anthropic/claude-sonnet-4.6"
+  # Gemini: Google AI Studio API（画像加工 Step2で使用）
+  # base64入力対応・APIキー方式（GOOGLE_API_KEY）
+  gemini:
+    base_url: "https://generativelanguage.googleapis.com/v1beta/models"
+    model: "gemini-3.1-flash-image-preview"
+
+# 画像加工設定（Gemini）
+# trueにしたページの画像がGeminiで加工される
+image_processing:
+  page1: false   # 表紙外観 - 世界観演出のため基本ON
+  page2: false  # 内観 - 都度判断
+  page3: false  # コンセプト - 都度判断
+  page4: false  # 設計図面 - 情報が変わると困るためOFF固定
+  page5: false  # RENT ROLL用物件画像 - OFF
+  page6: true  # 地図 - OFF
+
+# スライド設定
+slide:
+  # A4横（mm）
+  width_mm: 297
+  height_mm: 210
+  # 余白
+  margin_top_mm: 22
+  margin_bottom_mm: 22
+  margin_left_mm: 17
+  margin_right_mm: 17
+
+# 出力先
+paths:
+  assets: "assets"
+  common_input: "assets/common_input"
+  intermediates_text: "outputs/intermediates/text"
+  intermediates_images: "outputs/intermediates/images"
+  outputs: "outputs"
+
+# Step1 テキスト抽出タスクごとの入力ファイル設定
+# source_files: 使用するファイル名リスト（省略 or 空リストの場合は common_input 内の全PDFを使用）
+extraction:
+  property_info:
+    source_files: []
+  rent_roll:
+    source_files: []
+  concept_text:
+    source_files: []
+  location_info:
+    source_files: []

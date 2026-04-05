@@ -1,0 +1,15 @@
+# APIキー設定
+.env
+
+# 環境ファイル
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# 生成物関連
+outputs/intermediates/text/*.md
+outputs/intermediates/images/*.jpg
+outputs/intermediates/images/*.png
+outputs/*.pptx
+outputs/*.pdf
