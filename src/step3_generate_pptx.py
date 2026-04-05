@@ -102,16 +102,16 @@ def group_rooms_by_floor(table_rows: list[list[str]]) -> dict[int, list[list[str
 
 def derive_type_summary(table_rows: list[list[str]]) -> list[tuple[str, str, int]]:
     """room tableからタイプ別集計を導出: [(タイプ名, 間取り, 戸数), ...]
-    カラム順: [0]部屋番号 [1]用途(間取り) [2]占有面積 [3]タイプ [4]賃料 [5]坪単価 [6]状況"""
+    カラム順: [0]部屋番号 [1]用途 [2]占有面積 [3]タイプ [4]間取り [5]賃料 [6]坪単価 [7]状況"""
     type_map: dict[str, dict] = {}
     for row in table_rows[1:]:
-        if len(row) < 4:
+        if len(row) < 5:
             continue
         try:
             int(row[0].strip())
         except ValueError:
             continue
-        madori    = row[1].strip()
+        madori    = row[4].strip()
         type_name = row[3].strip()
         if type_name not in type_map:
             type_map[type_name] = {"madori": madori, "count": 0}
@@ -121,8 +121,8 @@ def derive_type_summary(table_rows: list[list[str]]) -> list[tuple[str, str, int
 
 def derive_contract_status(table_rows: list[list[str]]) -> dict[str, int]:
     """room tableから契約状況サマリーを導出。
-    現在の rent_roll.md に状況列がない場合は全て0を返す。"""
-    STATUS_COL = 6  # 状況カラム（0-based）
+    カラム順: [0]部屋番号 [1]用途 [2]占有面積 [3]タイプ [4]間取り [5]賃料 [6]坪単価 [7]状況"""
+    STATUS_COL = 7  # 状況カラム（0-based）
     counts = {"契約中": 0, "空室": 0, "退去予定": 0, "申込": 0}
     for row in table_rows[1:]:
         if len(row) <= STATUS_COL:
@@ -156,6 +156,24 @@ def find_images(directory: Path, processed_dir: Path, page_key: str) -> list[Pat
     return sorted(
         [p for p in directory.glob("*") if p.suffix.lower() in (".jpg", ".jpeg", ".png")]
     )
+
+
+def find_image_by_prefix(directory: Path, processed_dir: Path, page_key: str, prefix: str) -> Path | None:
+    """指定prefixに一致する加工済みまたは元画像を1枚返す（加工済み優先）"""
+    exts = (".jpg", ".jpeg", ".png")
+    processed = sorted([
+        p for p in processed_dir.glob(f"{page_key}_{prefix}*")
+        if p.suffix.lower() in exts
+    ])
+    if processed:
+        return processed[0]
+    if not directory.exists():
+        return None
+    matched = sorted([
+        p for p in directory.glob(f"{prefix}*")
+        if p.suffix.lower() in exts
+    ])
+    return matched[0] if matched else None
 
 
 # =========================================================
@@ -231,6 +249,7 @@ def add_image_safe(slide, image_path: Path, left, top, width, height):
         crop_tb = (img_h - visible_h) / 2 / img_h
         pic.crop_top = crop_tb
         pic.crop_bottom = crop_tb
+    pic.line.fill.background()  # 枠線なし
     return True
 
 
@@ -323,20 +342,29 @@ def add_slide1_cover(prs, config, text_dir, img_dir, processed_dir):
         processed_dir, "page1",
     )
 
-    # 左: メイン外観写真（62%幅・フル高さ）
+    # 左: メイン外観写真（余白付き）
     main_img_w = W * 0.62
+    img_pad_l = mm(10)
+    img_pad_r = mm(6)   # 右セクションとの間隔
+    img_pad_b = mm(10)
     if images:
-        add_image_safe(slide, images[0], 0, 0, main_img_w, H)
+        add_image_safe(
+            slide, images[0],
+            left=img_pad_l,
+            top=mt,
+            width=main_img_w - img_pad_l - img_pad_r,
+            height=H - mt - img_pad_b,
+        )
 
-    # 右上: サブ外観写真
+    # 右上: サブ外観写真（上端を左画像・他スライドと揃える）
     right_x   = main_img_w + mm(4)
-    right_w   = W - right_x - mm(2)
-    sub_img_h = H * 0.50
+    right_w   = W - right_x - mm(10)   # 右端にも余白
+    sub_img_h = H * 0.44               # 高さ約44%
     if len(images) >= 2:
-        add_image_safe(slide, images[1], right_x, 0, right_w, sub_img_h)
+        add_image_safe(slide, images[1], right_x, mt, right_w, sub_img_h)
 
-    # 右下: テキストエリア
-    text_y = sub_img_h + mm(6)
+    # 右下: テキストエリア（サブ画像の下から）
+    text_y = mt + sub_img_h + mm(7)
     text_w = right_w - mm(3)
 
     add_text_box(
@@ -373,10 +401,10 @@ def add_slide1_cover(prs, config, text_dir, img_dir, processed_dir):
 
 
 def add_slide2_interior(prs, config, text_dir, img_dir, processed_dir):
-    """スライド2: 内観（写真4枚均等グリッド・テキストなし）"""
+    """スライド2: 内観（写真4枚均等グリッド・余白あり）"""
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
-    set_slide_background(slide, COLOR_BLACK)
+    set_slide_background(slide, COLOR_BG)
 
     W  = prs.slide_width
     H  = prs.slide_height
@@ -388,15 +416,23 @@ def add_slide2_interior(prs, config, text_dir, img_dir, processed_dir):
         processed_dir, "page2",
     )
 
-    gap    = mm(1.5)
-    cell_w = (W - gap) / 2
-    cell_h = (H - gap) / 2
+    # 外周余白（ヘッダ表示のため上は広めに）
+    pad_top    = mm(15)
+    pad_bottom = mm(10)
+    pad_left   = mm(12)
+    pad_right  = mm(12)
+    gap        = mm(3)   # 画像間の隙間
+
+    area_w = W - pad_left - pad_right
+    area_h = H - pad_top  - pad_bottom
+    cell_w = (area_w - gap) / 2
+    cell_h = (area_h - gap) / 2
 
     positions = [
-        (0,            0,            cell_w, cell_h),
-        (cell_w + gap, 0,            cell_w, cell_h),
-        (0,            cell_h + gap, cell_w, cell_h),
-        (cell_w + gap, cell_h + gap, cell_w, cell_h),
+        (pad_left,            pad_top,             cell_w, cell_h),
+        (pad_left + cell_w + gap, pad_top,          cell_w, cell_h),
+        (pad_left,            pad_top + cell_h + gap, cell_w, cell_h),
+        (pad_left + cell_w + gap, pad_top + cell_h + gap, cell_w, cell_h),
     ]
     for i, (l, t, w, h) in enumerate(positions):
         if i < len(images):
@@ -786,7 +822,7 @@ def add_slide5_rentroll(prs, config, text_dir, img_dir, processed_dir):
             )
 
             # 各部屋セル
-            # rent_roll.md カラム順: 部屋番号[0] 用途[1] 占有面積[2] タイプ[3] 賃料[4] 坪単価[5] 状況[6]
+            # rent_roll.md カラム順: 部屋番号[0] 用途[1] 占有面積[2] タイプ[3] 間取り[4] 賃料[5] 坪単価[6] 状況[7]
             # 表示フォーマット（左列 | 右列）:
             #   部屋番号    | 契約ステータス
             #   タイプ      | 間取り
@@ -794,12 +830,12 @@ def add_slide5_rentroll(prs, config, text_dir, img_dir, processed_dir):
             #   賃料        | 賃料/坪
             for ri, room in enumerate(rooms):
                 room_no        = room[0] if len(room) > 0 else ""
-                madori         = room[1] if len(room) > 1 else ""
                 area_raw       = room[2] if len(room) > 2 else ""
                 type_name      = room[3] if len(room) > 3 else ""
-                rent           = room[4] if len(room) > 4 else ""
-                rent_per_tsubo = room[5] if len(room) > 5 else ""
-                status         = room[6] if len(room) > 6 else ""
+                madori         = room[4] if len(room) > 4 else ""
+                rent           = room[5] if len(room) > 5 else ""
+                rent_per_tsubo = room[6] if len(room) > 6 else ""
+                status         = room[7] if len(room) > 7 else ""
 
                 # 面積を㎡と坪に分割（例: "32.97㎡(9.97坪)" → "32.97㎡" / "9.97坪"）
                 area_m = re.match(r"([\d.]+㎡)\(?([\d.]+坪)\)?", area_raw)
@@ -905,25 +941,29 @@ def add_slide6_location(prs, config, text_dir, img_dir, processed_dir):
     ]
     access_lines = [a for a in access_lines if a and a != "未記載"]
 
-    images = find_images(
-        REPO_ROOT / config["paths"]["assets"] / "page6_image",
-        processed_dir, "page6",
-    )
+    page6_dir = REPO_ROOT / config["paths"]["assets"] / "page6_image"
+    location_map = find_image_by_prefix(page6_dir, processed_dir, "page6", "location_map")
+    site_map     = find_image_by_prefix(page6_dir, processed_dir, "page6", "site_map")
 
-    # 左: 地図エリア（48%幅）
-    map_w   = W * 0.48
-    map_gap = mm(3)
+    # 左: 地図エリア（他スライドと共通の余白を使用）
+    # location_map（上）＋ site_map（下）の2枚縦積み
+    map_left  = ml
+    map_top   = mt
+    map_w     = W * 0.48 - ml       # 左余白分を除いた幅
+    map_h     = H - mt - mb         # 上下余白分を除いた高さ
+    map_gap   = mm(3)
 
-    if len(images) >= 2:
-        # 広域地図（上半分）＋ 狭域地図（下半分）
-        each_h = (H - map_gap) / 2
-        add_image_fit(slide, images[0], 0, 0,              map_w, each_h)
-        add_image_fit(slide, images[1], 0, each_h + map_gap, map_w, each_h)
-    elif images:
-        add_image_fit(slide, images[0], 0, 0, map_w, H)
+    if location_map and site_map:
+        each_h = (map_h - map_gap) / 2
+        add_image_fit(slide, location_map, map_left, map_top,                map_w, each_h)
+        add_image_fit(slide, site_map,     map_left, map_top + each_h + map_gap, map_w, each_h)
+    elif location_map:
+        add_image_fit(slide, location_map, map_left, map_top, map_w, map_h)
+    elif site_map:
+        add_image_fit(slide, site_map,     map_left, map_top, map_w, map_h)
 
     # 右: テキストエリア
-    right_x = map_w + mm(5)
+    right_x = map_left + map_w + mm(5)
     right_w = W - right_x - mr
     label_w = mm(22)
     value_w = right_w - label_w
