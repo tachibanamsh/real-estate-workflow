@@ -13,6 +13,45 @@
 
 ---
 
+## 共通レイアウトルール
+
+### スライドサイズ
+A4横（297mm × 210mm）
+
+### 余白（全ページ共通）
+`config.yaml` の `slide` セクションで一元管理。全ページで同じ値を使用する。
+
+| 方向 | 変数 | デフォルト値 |
+|---|---|---|
+| 上 | `margin_top_mm` | 22mm |
+| 下 | `margin_bottom_mm` | 22mm |
+| 左 | `margin_left_mm` | 17mm |
+| 右 | `margin_right_mm` | 17mm |
+
+- 画像・テキストブロックともにこの余白内に収める
+- ヘッダー（英語物件名＋ページ番号）は右上・上余白内に配置
+- 各ページの ASCII 図では余白を省略して描いているが、実際にはすべてのコンテンツが余白の内側に入る
+
+### ヘッダー（全ページ共通）
+右上に固定配置。`add_header_common()` で統一描画。
+
+```
+Lumiec Kitasenju  |  01
+↑ property_info.md / name_en   ↑ ページ番号
+```
+
+### カラーパレット
+
+| 用途 | 変数名 | カラーコード |
+|---|---|---|
+| 背景（全ページ） | `COLOR_BG` | `#F8F6F3`（クリームグレー） |
+| アクセント | `COLOR_ACCENT` | `#C8AA7A`（ゴールド） |
+| 本文テキスト | `COLOR_BLACK` | `#1A1A1A` |
+| サブテキスト | `COLOR_GRAY` | `#888888` |
+| 区切り線 | `COLOR_LIGHT_GRAY` | `#D8D8D8` |
+
+---
+
 ## 各ページ詳細設計
 
 ---
@@ -259,51 +298,58 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  物件立地                               Lumiec Kitasenju  |  06    │
-│  ↑ 固定ラベル                            ↑ property_info.md/name_en │
-├──────────────────────────────────┬──────────────────────────────────┤
-│                                  │  LUMIEC KITASENJYU               │
-│                                  │  ↑ property_info.md / name_ja    │
-│     広域地図                      │  ────────────────────────────    │
-│     （北千住駅周辺エリア）           │  【所在地】                       │
-│                                  │  足立区千住中居町29番17号           │
-│   assets/page6_image/ [0]        │  ↑ property_info.md / address    │
-│                                  │                                  │
-├──────────────────────────────────┤  【土地】                          │
-│                                  │  地目: 宅地                        │
-│                                  │  ↑ property_info.md/land_category│
-│     狭域地図                      │  権利: 所有権                      │
-│     （物件位置ピン表示）             │  ↑ property_info.md/land_rights  │
-│                                  │  面積: 621.04㎡（私道含む）         │
-│   assets/page6_image/ [1]        │  ↑ property_info.md/land_area    │
-│                                  │                                  │
-│                                  │  【法令制限】                      │
-│                                  │  用途地域: 商業地域・第一種住居      │
-│                                  │  ↑ property_info.md / zoning     │
-│                                  │  建ぺい率: ①80% ②80%             │
-│                                  │  ↑ property_info.md/coverage_ratio│
-│                                  │  容積率: ①500% ②300%             │
-│                                  │  ↑ property_info.md/floor_ratio  │
-│                                  │  防火: ①防火地域 ②準防火地域       │
-│                                  │  ↑ property_info.md / fire_zone  │
-│                                  │  高度: 第二種高度地区               │
-│                                  │  ↑ property_info.md/height_zone  │
-│                                  │  日影: 有（5-3時間/6.5m）          │
-│                                  │  ↑ property_info.md/shadow_reg.. │
-│                                  │  ────────────────────────────    │
-│                                  │  【交通アクセス】                   │
-│                                  │  JR常磐線「北千住」駅 徒歩8分        │
-│                                  │  ↑ property_info.md / access1    │
-│                                  │  東京メトロ千代田線 他              │
-│                                  │  ↑ property_info.md / access2〜3 │
-└──────────────────────────────────┴──────────────────────────────────┘
+│                                         Lumiec Kitasenju  |  06    │
+│  ↑ ヘッダー（共通）                       ↑ property_info.md/name_en │
+│  ┌───────────────────────────┐  ┌──────────────────────────────────┐│
+│  │                           │  │  LUMIEC KITASENJYU               ││
+│  │   広域地図（location_map）  │  │  ↑ property_info.md / name_ja   ││
+│  │   北千住駅周辺エリア         │  │  ────────────────────────────   ││
+│  │                           │  │  【所在地】                      ││
+│  │  assets/page6_image/      │  │  足立区千住中居町29番17号          ││
+│  │  location_map.*           │  │  ↑ property_info.md / address   ││
+│  │                           │  │                                  ││
+│  ├───────────────────────────┤  │  【土地】                         ││
+│  │                           │  │  地目: 宅地                       ││
+│  │   狭域地図（site_map）      │  │  ↑ property_info.md/land_cat.. ││
+│  │   物件周辺・ピン表示          │  │  権利: 所有権                    ││
+│  │                           │  │  ↑ property_info.md/land_rights ││
+│  │  assets/page6_image/      │  │  面積: 621.04㎡（私道含む）        ││
+│  │  site_map.*               │  │  ↑ property_info.md/land_area   ││
+│  │                           │  │                                  ││
+│  │                           │  │  【法令制限】                     ││
+│  │                           │  │  用途地域: 商業地域・第一種住居     ││
+│  │                           │  │  ↑ property_info.md / zoning    ││
+│  │                           │  │  建ぺい率: ①80% ②80%            ││
+│  │                           │  │  ↑ property_info.md/coverage_.. ││
+│  │                           │  │  容積率: ①500% ②300%            ││
+│  │                           │  │  ↑ property_info.md/floor_ratio ││
+│  │                           │  │  防火: ①防火地域 ②準防火地域      ││
+│  │                           │  │  ↑ property_info.md/fire_zone   ││
+│  │                           │  │  高度: 第三種高度地区              ││
+│  │                           │  │  ↑ property_info.md/height_zone ││
+│  │                           │  │  日影: 有（5-3時間/6.5m）         ││
+│  │                           │  │  ↑ property_info.md/shadow_reg. ││
+│  │                           │  │  ────────────────────────────   ││
+│  │                           │  │  【交通アクセス】                  ││
+│  │                           │  │  JR常磐線「北千住」駅 徒歩8分       ││
+│  │                           │  │  ↑ property_info.md / access1   ││
+│  │                           │  │  東京メトロ千代田線 他             ││
+│  └───────────────────────────┘  │  ↑ property_info.md / access2〜3││
+│                                  └──────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────┘
   ←────────── 約48% ──────────→  ←────────── 約52% ───────────→
 ```
 
+**地図ファイルの命名規則:**
+- 広域地図: `assets/page6_image/location_map.[jpg|jpeg|png]`
+- 狭域地図: `assets/page6_image/site_map.[jpg|jpeg|png]`
+- 両方存在する場合は上下に配置。片方のみの場合は全高で1枚表示。
+- 加工済み画像（step2出力）が存在する場合は `outputs/intermediates/images/page6_location_map*` / `page6_site_map*` を優先使用。
+
 | 要素 | ソースファイル / フィールド |
 |---|---|
-| 広域地図 | `assets/page6_image/` [0] |
-| 狭域地図 | `assets/page6_image/` [1] |
+| 広域地図 | `assets/page6_image/location_map.*` |
+| 狭域地図 | `assets/page6_image/site_map.*` |
 | 物件名（日本語） | `property_info.md` / `name_ja` |
 | 所在地 | `property_info.md` / `address` |
 | 土地：地目 | `property_info.md` / `land_category` |
