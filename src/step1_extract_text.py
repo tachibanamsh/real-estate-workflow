@@ -71,7 +71,7 @@ def call_claude(config: dict, messages: list) -> str:
             "Authorization": f"Bearer {api_key}",
         },
         json=payload,
-        timeout=120,
+        timeout=300,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -84,6 +84,7 @@ def call_claude(config: dict, messages: list) -> str:
 PROMPT_PROPERTY_INFO = """
 添付のPDFから不動産販促資料に必要な基本情報を抽出し、以下のMarkdown形式で出力してください。
 不明な項目は「未記載」と記入してください。
+各フィールドには必ず1つの値のみ記入してください（複数値を1フィールドに混在させないこと）。
 
 ```markdown
 # 物件基本情報
@@ -93,26 +94,39 @@ name_ja: （日本語物件名）
 name_en: （英語物件名 または ローマ字表記）
 
 ## 価格情報
-price: （販売価格 例: ¥3億8,000万円）
-yield_rate: （想定表面利回り 例: 4.2%）
-land_price: （土地価格 任意）
-building_price: （建物参考価格 任意）
+price: （販売価格 例: ¥16億4,000万円）
+yield_rate: （表面利回りのみ 数値+% 例: 4.1%）
+noi_yield: （NOI利回りのみ 数値+% 例: 3.6%）
 
 ## 所在地
 address: （住所）
-area: （エリア名 例: 渋谷区松濤）
+area: （エリア名 例: 足立区北千住）
 
 ## 物件概要
-land_area: （土地面積 例: 180.00㎡）
-building_area: （建物面積 例: 320.00㎡）
+land_area: （土地面積 例: 621.04㎡）
+building_area: （建物面積 例: 延床 約410坪）
+building_type: （種別 例: 共同住宅）
 structure: （構造 例: 鉄筋コンクリート造）
-floors: （階数 例: 地上3階建）
-completion: （竣工予定 例: 2026年9月）
-legal_restrictions: （法令制限 例: 第一種低層住居専用地域）
-notes: （備考 任意）
+floors: （階数 例: 地上5階建）
+units: （戸数 例: 33戸）
+completion: （竣工予定 例: 2025年10月）
+land_category: （地目 例: 宅地）
+land_rights: （権利 例: 所有権）
+zoning: （用途地域 例: ①商業地域 ②第一種住居地域）
+coverage_ratio: （建ぺい率 例: ①80% ②80%）
+floor_ratio: （容積率 例: ①500% ②300%（前面道路制限で①②とも240%））
+fire_zone: （防火指定 例: ①防火地域 ②準防火地域）
+height_zone: （高度指定 例: 第三種高度地区）
+shadow_regulation: （日影規制 例: 有（5-3時間/6.5m））
+
+## 収支情報
+annual_income: （年間想定賃料収入 例: ¥66,849,600）
+annual_expense: （年間想定支出合計 例: ¥5,626,280）
+expense_breakdown: （支出内訳 例: PM費¥1,352,340・BM費¥2,777,940・保険¥108,000・固都税¥1,388,000）
+noi: （NOI＝年間収入－年間支出 例: ¥61,223,320）
 
 ## 交通アクセス
-access1: （最寄り路線・駅・徒歩 例: 東急東横線「渋谷」駅 徒歩8分）
+access1: （最寄り路線・駅・徒歩 例: JR常磐線「北千住」駅 徒歩8分）
 access2: （2番目の交通手段 任意）
 access3: （3番目の交通手段 任意）
 ```
@@ -128,13 +142,13 @@ PROMPT_RENT_ROLL = """
 # RENT ROLL
 
 ## 想定収入表
-| 部屋番号 | 用途 | 占有面積 | 賃料 | 共益費 | 月額合計 |
-|---------|------|---------|------|--------|---------|
-（各行を記入）
+| 部屋番号 | 用途 | 占有面積 | タイプ | 賃料 | 坪単価 | 状況 |
+|---------|------|---------|------|------|--------|------|
+（各行を記入。状況は「契約中」「空室」「申込」「退去予定」のいずれかを記入）
 
 ## 合計
-monthly_total: （月額合計 例: ¥1,320,000）
-annual_total: （年間合計 例: ¥15,840,000）
+monthly_total: （月額合計 例: ¥5,570,800）
+annual_total: （年間合計 例: ¥66,849,600）
 ```
 
 Markdownコードブロック（```markdown〜```）の中身だけを出力してください。前後の説明は不要です。
@@ -252,10 +266,10 @@ def run():
     print(f"  合計 {sum(len(b) for b in pdf_blocks.values())} ページを変換")
 
     tasks = [
-        ("property_info.md", PROMPT_PROPERTY_INFO, "物件基本情報", "property_info"),
-        ("rent_roll.md", PROMPT_RENT_ROLL, "RENT ROLL", "rent_roll"),
-        ("concept_text.md", PROMPT_CONCEPT_TEXT, "コンセプト・キャッチコピー", "concept_text"),
-        ("location_info.md", PROMPT_LOCATION_INFO, "立地情報", "location_info"),
+        ("property_info.md", PROMPT_PROPERTY_INFO, "物件基本情報",           "property_info"),
+        ("rent_roll.md",     PROMPT_RENT_ROLL,     "RENT ROLL",             "rent_roll"),
+        ("concept_text.md",  PROMPT_CONCEPT_TEXT,  "コンセプト・キャッチコピー", "concept_text"),
+        ("location_info.md", PROMPT_LOCATION_INFO, "立地情報",               "location_info"),
     ]
 
     for filename, prompt, label, task_name in tasks:
