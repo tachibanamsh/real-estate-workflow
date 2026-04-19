@@ -102,6 +102,7 @@ python workflow.py --step 1 2 3 4  # 全ステップ（デフォルトと同じ�
 
 ## TODO
 
-- [ ] TRAIN ROUTE MAP（路線図）の自動生成（Slide 6右下）
-- [ ] フォント埋め込み確認（Noto Sans JP / Playfair Display）
-- [ ] Gemini APIの画像入力形式の確認（base64 data URI対応状況）
+- TRAIN ROUTE MAP（路線図）の自動生成（Slide 6右下）
+- フォント埋め込み確認（Noto Sans JP / Playfair Display）
+- Gemini APIの画像入力形式の確認（base64 data URI対応状況）
+- expense_breakdown(支出内訳)は情報抽出しているがスライド未使用

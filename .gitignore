@@ -7,9 +7,10 @@ __pycache__/
 *.pyo
 .DS_Store
 
+# input資料
+assets/*
+!assets/.gitkeep
+
 # 生成物関連
-outputs/intermediates/text/*.md
-outputs/intermediates/images/*.jpg
-outputs/intermediates/images/*.png
-outputs/*.pptx
-outputs/*.pdf
+outputs/*
+!outputs/.gitkeep
